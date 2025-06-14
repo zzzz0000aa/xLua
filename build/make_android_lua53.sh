@@ -2,10 +2,8 @@ if [ -n "$ANDROID_NDK" ]; then
     export NDK=${ANDROID_NDK}
 elif [ -n "$ANDROID_NDK_HOME" ]; then
     export NDK=${ANDROID_NDK_HOME}
-elif [ -n "$ANDROID_NDK_HOME" ]; then
-    export NDK=${ANDROID_NDK_HOME}
 else
-    export NDK=~/android-ndk-r15c
+    export NDK=/mnt/f/Android/AndroidNDK/android-ndk-r21d
 fi
 
 if [ ! -d "$NDK" ]; then
@@ -23,6 +21,9 @@ function build() {
     mkdir -p plugin_lua53/Plugins/Android/libs/${ABI}/
     cp ${BUILD_PATH}/libxlua.so plugin_lua53/Plugins/Android/libs/${ABI}/libxlua.so
 }
+
+# Change to build directory
+cd "$(dirname "$0")"
 
 build android-16 armeabi-v7a arm-linux-androideabi-4.9
 build android-16 arm64-v8a  arm-linux-androideabi-clang

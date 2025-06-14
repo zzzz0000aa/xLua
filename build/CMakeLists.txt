@@ -133,63 +133,12 @@ if (NOT USING_LUAJIT)
     list (APPEND XLUA_CORE memory_leak_checker.c)
 endif ( )
 
-# Third-party libraries integration
-# lua-protobuf
-set (LUA_PROTOBUF_SRC
-    lua-protobuf/pb.c
-)
-set_property(
-    SOURCE ${LUA_PROTOBUF_SRC}
-    APPEND
-    PROPERTY COMPILE_DEFINITIONS
-    LUA_LIB
-)
-
-# lua-rapidjson
-set (LUA_RAPIDJSON_SRC
-    lua-rapidjson/src/rapidjson.cpp
-    lua-rapidjson/src/Document.cpp
-    lua-rapidjson/src/Schema.cpp
-    lua-rapidjson/src/values.cpp
-)
-set_property(
-    SOURCE ${LUA_RAPIDJSON_SRC}
-    APPEND
-    PROPERTY COMPILE_DEFINITIONS
-    LUA_LIB
-)
-set_property(
-    SOURCE ${LUA_RAPIDJSON_SRC}
-    APPEND
-    PROPERTY INCLUDE_DIRECTORIES
-    ${CMAKE_SOURCE_DIR}/lua-rapidjson/rapidjson/include
-)
-
-
-
-# luafilesystem
-set (LUA_FILESYSTEM_SRC
-    luafilesystem/src/lfs.c
-)
-set_property(
-    SOURCE ${LUA_FILESYSTEM_SRC}
-    APPEND
-    PROPERTY COMPILE_DEFINITIONS
-    LUA_LIB
-)
+# Third-party libraries integration - disabled for minimal build
+# Uncomment and add source files if needed
 
 # Add third-party include directories and sources
-list(APPEND THIRDPART_INC
-    lua-protobuf
-    lua-rapidjson/rapidjson/include
-    luafilesystem/src
-)
-
-list(APPEND THIRDPART_SRC
-    ${LUA_PROTOBUF_SRC}
-    ${LUA_RAPIDJSON_SRC}
-    ${LUA_FILESYSTEM_SRC}
-)
+set(THIRDPART_INC "")
+set(THIRDPART_SRC "")
 
 macro(source_group_by_dir proj_dir source_files)
     if(MSVC OR APPLE)
