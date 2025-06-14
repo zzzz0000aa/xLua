@@ -1,0 +1,146 @@
+# Clean Android CMakeLists.txt for XLua
+# This version completely avoids Windows-specific configurations
+
+cmake_minimum_required(VERSION 3.18)
+
+# Set the project name and languages
+project(XLua C CXX)
+
+# Ensure we're building for Android
+if(NOT ANDROID)
+    message(FATAL_ERROR "This CMakeLists.txt is specifically for Android builds")
+endif()
+
+# Force override any inherited compiler flags
+set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-g" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g" CACHE STRING "" FORCE)
+
+# Android-specific definitions
+add_definitions(-DLUA_USE_LINUX)
+add_definitions(-DLUA_COMPAT_APIINTCASTS)
+
+# Set Lua version
+if(NOT LUA_VERSION)
+    set(LUA_VERSION "5.3.5")
+endif()
+
+set(LUA_SRC_PATH lua-${LUA_VERSION}/src)
+
+# Configure Lua
+set(LUA_IDSIZE 120 CACHE STRING "gives the maximum size for the description of the source.")
+configure_file(${LUA_SRC_PATH}/luaconf.h.in ${CMAKE_CURRENT_BINARY_DIR}/luaconf.h)
+
+# Lua core source files
+file(GLOB LUA_CORE ${LUA_SRC_PATH}/*.c)
+list(REMOVE_ITEM LUA_CORE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/${LUA_SRC_PATH}/lua.c 
+    ${CMAKE_CURRENT_SOURCE_DIR}/${LUA_SRC_PATH}/luac.c
+)
+
+# XLua core files
+set(XLUA_CORE
+    i64lib.c
+    xlua.c
+    memory_leak_checker.c
+)
+
+# Lua socket files (Unix version for Android)
+set(LUA_SOCKET
+    luasocket/auxiliar.c
+    luasocket/buffer.c
+    luasocket/except.c
+    luasocket/inet.c
+    luasocket/io.c
+    luasocket/luasocket.c
+    luasocket/mime.c
+    luasocket/options.c
+    luasocket/select.c
+    luasocket/tcp.c
+    luasocket/timeout.c
+    luasocket/udp.c
+    luasocket/usocket.c
+)
+
+# Third-party libraries
+set(LUA_PROTOBUF_SRC lua-protobuf/pb.c)
+
+set(LUA_RAPIDJSON_SRC 
+    lua-rapidjson/src/rapidjson.cpp
+    lua-rapidjson/src/Document.cpp
+    lua-rapidjson/src/Schema.cpp
+    lua-rapidjson/src/values.cpp
+)
+
+set(LUA_FILESYSTEM_SRC luafilesystem/src/lfs.c)
+
+# All third-party sources
+set(THIRDPART_SRC
+    ${LUA_PROTOBUF_SRC}
+    ${LUA_RAPIDJSON_SRC}
+    ${LUA_FILESYSTEM_SRC}
+)
+
+# Include directories
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/${LUA_SRC_PATH}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/lua-protobuf
+    ${CMAKE_CURRENT_SOURCE_DIR}/lua-rapidjson/rapidjson/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/luafilesystem/src
+)
+
+# Create the shared library
+add_library(xlua SHARED
+    ${LUA_CORE}
+    ${LUA_SOCKET}
+    ${XLUA_CORE}
+    ${THIRDPART_SRC}
+)
+
+# Set compile definitions for the library
+target_compile_definitions(xlua PRIVATE
+    LUA_LIB
+    LUA_COMPAT_APIINTCASTS
+    ANDROID
+)
+
+# Set properties for third-party sources
+set_property(SOURCE ${LUA_PROTOBUF_SRC} 
+    APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+
+set_property(SOURCE ${LUA_RAPIDJSON_SRC} 
+    APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+
+set_property(SOURCE ${LUA_FILESYSTEM_SRC} 
+    APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+
+# Set socket compile definitions
+set_property(SOURCE ${LUA_SOCKET} 
+    APPEND PROPERTY COMPILE_DEFINITIONS LUA_COMPAT_APIINTCASTS LUA_LIB)
+
+# Link required Android libraries
+target_link_libraries(xlua m log)
+
+# Ensure no Windows-specific flags are used
+get_target_property(COMPILE_FLAGS xlua COMPILE_FLAGS)
+if(COMPILE_FLAGS)
+    string(REPLACE "/MT" "" COMPILE_FLAGS "${COMPILE_FLAGS}")
+    string(REPLACE "/MTd" "" COMPILE_FLAGS "${COMPILE_FLAGS}")
+    set_target_properties(xlua PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS}")
+endif()
+
+# Set output name
+set_target_properties(xlua PROPERTIES OUTPUT_NAME "xlua")
+
+# Print configuration info
+message(STATUS "Building XLua for Android")
+message(STATUS "  Target ABI: ${ANDROID_ABI}")
+message(STATUS "  API Level: ${ANDROID_NATIVE_API_LEVEL}")
+message(STATUS "  Toolchain: ${ANDROID_TOOLCHAIN}")
+message(STATUS "  C Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "  CXX Compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "  C Flags: ${CMAKE_C_FLAGS}")
+message(STATUS "  CXX Flags: ${CMAKE_CXX_FLAGS}")

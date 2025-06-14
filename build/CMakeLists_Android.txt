@@ -1,0 +1,141 @@
+# Android-specific CMakeLists.txt for XLua
+# This file is specifically designed to avoid Windows compiler flag conflicts
+
+cmake_minimum_required(VERSION 3.10)
+
+# Force clear all compiler flags before project declaration
+set(CMAKE_C_FLAGS "" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "" CACHE STRING "" FORCE)
+
+project(XLua C CXX)
+
+# Ensure we're building for Android
+if(NOT ANDROID)
+    message(FATAL_ERROR "This CMakeLists.txt is specifically for Android builds")
+endif()
+
+# Android-specific definitions
+if(ANDROID)
+    ADD_DEFINITIONS(-DLUA_USE_LINUX)
+endif()
+
+option(UINT_ESPECIALLY "using custom ulong" OFF)
+option(USING_LUAJIT "using luajit" OFF)
+option(GC64 "using gc64" OFF)
+option(LUAC_COMPATIBLE_FORMAT "compatible format" OFF)
+
+if(NOT LUA_VERSION)
+    set(LUA_VERSION "5.3.5")
+endif()
+
+set(LUA_SRC_PATH lua-${LUA_VERSION}/src)
+set(LUAJIT_SRC_PATH luajit-2.1.0b3/src)
+
+# Third-party libraries integration
+set(LUA_PROTOBUF_SRC lua-protobuf/pb.c)
+set(LUA_RAPIDJSON_SRC 
+    lua-rapidjson/src/rapidjson.cpp
+    lua-rapidjson/src/Document.cpp
+    lua-rapidjson/src/Schema.cpp
+    lua-rapidjson/src/values.cpp
+)
+set(LUA_FILESYSTEM_SRC luafilesystem/src/lfs.c)
+
+# Include directories
+include_directories(
+    ${CMAKE_SOURCE_DIR}
+    ${LUA_SRC_PATH}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    lua-protobuf
+    lua-rapidjson/rapidjson/include
+    luafilesystem/src
+)
+
+# Configure Lua
+if(NOT USING_LUAJIT)
+    set(LUA_IDSIZE 120 CACHE STRING "gives the maximum size for the description of the source.")
+    configure_file(${LUA_SRC_PATH}/luaconf.h.in ${CMAKE_CURRENT_BINARY_DIR}/luaconf.h)
+    aux_source_directory(${LUA_SRC_PATH} LUA_CORE)
+    list(REMOVE_ITEM LUA_CORE ${LUA_SRC_PATH}/lua.c ${LUA_SRC_PATH}/luac.c)
+endif()
+
+# XLua core files
+set(XLUA_CORE
+    i64lib.c
+    xlua.c
+)
+
+if(NOT USING_LUAJIT)
+    list(APPEND XLUA_CORE memory_leak_checker.c)
+endif()
+
+# Lua socket files
+set(LUA_SOCKET
+    luasocket/auxiliar.c
+    luasocket/buffer.c
+    luasocket/except.c
+    luasocket/inet.c
+    luasocket/io.c
+    luasocket/luasocket.c
+    luasocket/mime.c
+    luasocket/options.c
+    luasocket/select.c
+    luasocket/tcp.c
+    luasocket/timeout.c
+    luasocket/udp.c
+    luasocket/usocket.c  # Use Unix socket for Android
+)
+
+# All third-party sources
+set(THIRDPART_SRC
+    ${LUA_PROTOBUF_SRC}
+    ${LUA_RAPIDJSON_SRC}
+    ${LUA_FILESYSTEM_SRC}
+)
+
+# Create the library
+add_library(xlua SHARED
+    ${LUA_CORE}
+    ${LUA_SOCKET}
+    ${XLUA_CORE}
+    ${THIRDPART_SRC}
+)
+
+# Set compile definitions
+target_compile_definitions(xlua PRIVATE
+    LUA_LIB
+    LUA_COMPAT_APIINTCASTS
+    ANDROID
+)
+
+# Set properties for third-party sources
+set_property(SOURCE ${LUA_PROTOBUF_SRC} APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+set_property(SOURCE ${LUA_RAPIDJSON_SRC} APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+set_property(SOURCE ${LUA_FILESYSTEM_SRC} APPEND PROPERTY COMPILE_DEFINITIONS LUA_LIB)
+
+# Set include directories for rapidjson
+set_property(SOURCE ${LUA_RAPIDJSON_SRC} APPEND PROPERTY INCLUDE_DIRECTORIES 
+    ${CMAKE_SOURCE_DIR}/lua-rapidjson/rapidjson/include)
+
+# Set socket compile definitions
+set_property(SOURCE ${LUA_SOCKET} APPEND PROPERTY COMPILE_DEFINITIONS
+    LUA_COMPAT_APIINTCASTS LUA_LIB)
+
+# Link libraries
+target_link_libraries(xlua m log)
+
+if(UINT_ESPECIALLY)
+    target_compile_definitions(xlua PRIVATE UINT_ESPECIALLY)
+endif()
+
+if(GC64 AND USING_LUAJIT)
+    target_compile_definitions(xlua PRIVATE LUAJIT_ENABLE_GC64)
+endif()
+
+if(LUAC_COMPATIBLE_FORMAT AND NOT USING_LUAJIT)
+    target_compile_definitions(xlua PRIVATE LUAC_COMPATIBLE_FORMAT)
+endif()

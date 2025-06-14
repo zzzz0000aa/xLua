@@ -13,6 +13,18 @@ if ( WIN32 AND NOT CYGWIN AND NOT ( CMAKE_SYSTEM_NAME STREQUAL "WindowsStore" ) 
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd" CACHE STRING "")
 endif ()
 
+# Clear Windows-specific flags for Android
+if (ANDROID)
+	string(REPLACE "/MT" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+	string(REPLACE "/MTd" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+	string(REPLACE "/MT" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+	string(REPLACE "/MTd" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" CACHE STRING "" FORCE)
+	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" CACHE STRING "" FORCE)
+endif ()
+
 project(XLua)
 
 if ( IOS )
@@ -135,13 +147,22 @@ set_property(
 
 # lua-rapidjson
 set (LUA_RAPIDJSON_SRC
-    lua-rapidjson/source/rapidjson.cpp
+    lua-rapidjson/src/rapidjson.cpp
+    lua-rapidjson/src/Document.cpp
+    lua-rapidjson/src/Schema.cpp
+    lua-rapidjson/src/values.cpp
 )
 set_property(
     SOURCE ${LUA_RAPIDJSON_SRC}
     APPEND
     PROPERTY COMPILE_DEFINITIONS
     LUA_LIB
+)
+set_property(
+    SOURCE ${LUA_RAPIDJSON_SRC}
+    APPEND
+    PROPERTY INCLUDE_DIRECTORIES
+    ${CMAKE_SOURCE_DIR}/lua-rapidjson/rapidjson/include
 )
 
 
@@ -160,7 +181,7 @@ set_property(
 # Add third-party include directories and sources
 list(APPEND THIRDPART_INC
     lua-protobuf
-    lua-rapidjson/include
+    lua-rapidjson/rapidjson/include
     luafilesystem/src
 )
 
@@ -238,6 +259,15 @@ elseif ("${CMAKE_SYSTEM_NAME}" STREQUAL "Switch")
         ${THIRDPART_SRC}
     )
     target_compile_options(xlua PRIVATE -m64 -mcpu=cortex-a57+fp+simd+crypto+crc -fno-common -fno-short-enums -ffunction-sections -fdata-sections -fPIC -fms-extensions)
+elseif (ANDROID)
+    ADD_DEFINITIONS(-DLUA_USE_LINUX)
+    add_library(xlua SHARED
+        ${LUA_CORE}
+        ${LUA_LIB}
+        ${LUA_SOCKET}
+        ${XLUA_CORE}
+        ${THIRDPART_SRC}
+    )
 else ( )
     add_library(xlua SHARED
         ${LUA_CORE}
