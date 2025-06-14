@@ -461,6 +461,35 @@ namespace XLua.LuaDLL
         public static extern int luaopen_socket_core(IntPtr L);//[,,m]
 #endif
 
+        // Third-party library bindings
+        [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int luaopen_pb(IntPtr L);//lua-protobuf
+
+        [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int luaopen_rapidjson(IntPtr L);//lua-rapidjson
+
+        [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int luaopen_lfs(IntPtr L);//luafilesystem
+
+        // Wrapper functions for third-party libraries
+        [MonoPInvokeCallback(typeof(lua_CSFunction))]
+        public static int LoadProtobuf(IntPtr L)
+        {
+            return luaopen_pb(L);
+        }
+
+        [MonoPInvokeCallback(typeof(lua_CSFunction))]
+        public static int LoadRapidJson(IntPtr L)
+        {
+            return luaopen_rapidjson(L);
+        }
+
+        [MonoPInvokeCallback(typeof(lua_CSFunction))]
+        public static int LoadLuaFileSystem(IntPtr L)
+        {
+            return luaopen_lfs(L);
+        }
+
         [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void lua_pushint64(IntPtr L, long n);//[,,m]
 

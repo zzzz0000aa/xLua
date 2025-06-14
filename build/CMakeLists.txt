@@ -121,6 +121,55 @@ if (NOT USING_LUAJIT)
     list (APPEND XLUA_CORE memory_leak_checker.c)
 endif ( )
 
+# Third-party libraries integration
+# lua-protobuf
+set (LUA_PROTOBUF_SRC
+    lua-protobuf/pb.c
+)
+set_property(
+    SOURCE ${LUA_PROTOBUF_SRC}
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    LUA_LIB
+)
+
+# lua-rapidjson
+set (LUA_RAPIDJSON_SRC
+    lua-rapidjson/source/rapidjson.cpp
+)
+set_property(
+    SOURCE ${LUA_RAPIDJSON_SRC}
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    LUA_LIB
+)
+
+
+
+# luafilesystem
+set (LUA_FILESYSTEM_SRC
+    luafilesystem/src/lfs.c
+)
+set_property(
+    SOURCE ${LUA_FILESYSTEM_SRC}
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    LUA_LIB
+)
+
+# Add third-party include directories and sources
+list(APPEND THIRDPART_INC
+    lua-protobuf
+    lua-rapidjson/include
+    luafilesystem/src
+)
+
+list(APPEND THIRDPART_SRC
+    ${LUA_PROTOBUF_SRC}
+    ${LUA_RAPIDJSON_SRC}
+    ${LUA_FILESYSTEM_SRC}
+)
+
 macro(source_group_by_dir proj_dir source_files)
     if(MSVC OR APPLE)
         get_filename_component(sgbd_cur_dir ${proj_dir} ABSOLUTE)
